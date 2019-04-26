@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>登录</title>
+    <link rel="stylesheet" href="/frame/layui/css/layui.css">
+    <link rel="stylesheet" href="/frame/static/css/style.css">
+    <link rel="icon" href="/frame/static/image/logo.png">
+</head>
+<body>
+<div style="margin: 0 auto; width: 70px; height: 70px; margin-top: 50px;">
+    <img src="/frame/static/image/logo.png" width="70px" height="70px">
+</div>
+<div class="login-main">
+    <header class="layui-elip">登录送水管理平台</header>
+    <form class="layui-form">
+
+        <div class="layui-form-item layui-row">
+            <div class="layui-input-inline">
+                <input type="text" name="account" id="account" required lay-verify="required" placeholder="账号"
+                       value="admin"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+            <div class="layui-input-inline">
+                <input type="password" name="password" id="password" required lay-verify="required" placeholder="密码"
+                       value="admin"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+            <div class="layui-input-inline">
+                <div class="layui-col-md7">
+                    <input type="text" name="code" id="code" class="layui-input" placeholder="验证码" maxlength="4"/>
+                </div>
+                <div class="layui-col-md3 layui-col-lg-offset1">
+                    <img src="/verify" height="40px" alt=""
+                         style="cursor:pointer" id="verify">
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item layui-row">
+            <div class="layui-input-inline login-btn">
+                <button lay-submit type="button" class="layui-btn" lay-filter="btn_login">登录</button>
+            </div>
+        </div>
+
+
+        <hr/>
+        <p><a href="#" class="fl">立即注册</a><a href="javascript:;"
+                                                          class="fr">忘记密码？</a></p>
+    </form>
+</div>
+
+
+<script src="/frame/layui/layui.js"></script>
+<script src="/js/jquery.min.js"></script>
+<script src="/js/jsencrypt.min.js"></script>
+<script type="text/javascript">
+    localStorage.host = 'localhost:8090';
+</script>
+<script>
+    var publicKey = null;
+    var encrypt = new JSEncrypt();
+    $.ajax({
+       url: "/public-key",
+       type: "post",
+       dataType: "text",
+       success: function (data) {
+           if(data) {
+               publicKey = data;
+           }
+           if(publicKey === null) {
+               $("#msg").html("获取publickey失败，请联系管理员");
+               $("#btn_login").removeAttr("disabled");
+           }
+       }
+    });
+</script>
+<script>
+    //Demo
+    layui.use('form', function(){
+        var form = layui.form;
+
+        //监听提交
+        form.on('submit(btn_login)', function(data){
+            //layer.msg(JSON.stringify(data.field));
+            console.log('ok');
+            encrypt.setPublicKey(publicKey);
+            var param = data.field;
+            param['account'] = encrypt.encrypt(param['account'].trim());
+            param['password'] = encrypt.encrypt(param['password'].trim());
+            $.ajax({
+                type: 'POST',
+                url: 'login',
+                data: param,
+                beforeSend: function () {
+                    var index = layer.load(2, {
+                        shade: [0.5,'#DBDBDB'] //0.1透明度的白色背景
+                    });
+                },
+                error: function(data) {
+                    console.log('error');
+                    console.log(data)
+                },
+                success: function(data){
+                    console.log(data);
+                    if(data['msg'] === 'success') {
+                        layer.msg("登录成功", {
+                            icon: 1, time: 1000, end: function () {
+                                window.location.reload();
+                            }
+                        });
+                    }else {
+                        layer.msg(data.msg, {icon: 2});
+                    }
+                }
+            });
+            return false;
+        });
+    });
+</script>
+<script>
+    document.getElementById("verify").onclick = function () {
+        document.getElementById("verify").src = "/verify?time=" + new Date().getTime();
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>待配送订单</title>
+    <link rel="stylesheet" href="../frame/layui/css/layui.css">
+    <link rel="stylesheet" href="../frame/static/css/style.css">
+</head>
+<body>
+
+<script>
+    localStorage.host = 'localhost:8090';
+</script>
+
+
+<!-- 工具集 -->
+<div class="my-btn-box" style="margin-top: 17px">
+    <span class="fl">
+        <a class="layui-btn layui-btn-danger radius btn-delect" id="btn-delete-all">批量删除</a>
+        <a class="layui-btn btn-add btn-default" id="btn-delivery">分配订单</a>
+        <a class="layui-btn btn-add btn-default" id="btn-refresh"><i class="layui-icon">&#xe666;</i></a>
+    </span>
+    <span class="fr">
+        <span class="layui-form-label">桶数：</span>
+        <div class="layui-input-inline">
+            <input name="n" id="n" type="text" autocomplete="off" placeholder="请输入桶数" class="layui-input">
+        </div>
+        <button class="layui-btn mgl-20" onclick="deliv()">生成智能配送</button>
+    </span>
+</div>
+
+
+<!-- 表格 -->
+<div id="dateTable" lay-filter="test"></div>
+
+<script type="text/javascript" src="../frame/layui/layui.js"></script>
+<script type="text/javascript" src="../js/index.js"></script>
+<script type="text/javascript" src="../js/jquery.min.js"></script>
+<script type="text/javascript">
+
+    Array.prototype.indexOf = function(val) {
+        for (var i = 0; i < this.length; i++) {
+            if (this[i] == val) return i;
+        }
+        return -1;
+    };
+
+    Array.prototype.remove = function(val) {
+        var index = this.indexOf(val);
+        if (index > -1) {
+            this.splice(index, 1);
+        }
+    };
+
+    // layui方法
+    layui.use(['table', 'form', 'layer', 'vip_table'], function () {
+
+        // 操作对象
+        var form = layui.form
+            , table = layui.table
+            , layer = layui.layer
+            , vipTable = layui.vip_table
+            , $ = layui.jquery;
+
+        // 表格渲染
+        var tableIns = table.render({
+            elem: '#dateTable'                  //指定原始表格元素选择器（推荐id选择器）
+            , height: vipTable.getFullHeight()    //容器高度
+            , cols: [[                  //标题栏
+                {checkbox: true, fixed: 'left'}
+                , {field: 'id', title: 'ID', sort: true}
+                , {field: 'nickname', title: '用户名'}
+                , {field: 'area', title: '生活区'}
+                , {field: 'build', title: '楼号', sort: true}
+                , {field: 'dormitory', title: '寝室号'}
+                , {field: 'bookTime', title: '下单时间'}
+                , {field: 'arriveTime', title: '送达时间', sort: true}
+                , {field: 'staffName', title: '送水员', sort: true}
+                , {field: 'state', title: '状态', sort: true}
+                , {fixed: 'right', title: '操作', width: 250, toolbar: '#barOption'} //这里的toolbar值是模板元素的选择器
+            ]]
+            , id: 'dataCheck'
+            , url: '/order/pending'
+            , method: 'get'
+            , page: true
+            , limits: [30, 60, 90, 150, 300]
+            , limit: 30 //默认采用30
+            , loading: false
+            , done: function (res, curr, count) {
+                //如果是异步请求数据方式，res即为你接口返回的信息。
+                //如果是直接赋值的方式，res即为：{data: [], count: 99} data为当前页数据、count为数据总长度
+                console.log(res);
+
+                //得到当前页码
+                console.log(curr);
+
+                //得到数据总量
+                console.log(count);
+            }
+        });
+
+        var delivery = [];
+        var staffName = '';
+
+        // 获取选中行
+        table.on('checkbox(test)', function (obj) {
+            console.log(obj.checked); //当前是否选中状态
+            console.log(obj.data); //选中行的相关数据
+            console.log(obj.type); //如果触发的是全选，则为：all，如果触发的是单选，则为：one
+
+            if(obj.type === 'all') {
+
+            }else{
+                var already = false;
+                var index = 0;
+                for(var i=0; i<delivery.length; i++) {
+                    if(delivery[i] === obj.data['id']) {
+                        already = true;
+                        index = i;
+                        break;
+                    }
+                }
+                if(already) {
+                    delivery.remove(obj.data['id']);
+                }else{
+                    delivery[delivery.length] = obj.data['id'];
+                }
+            }
+
+            console.log(delivery);
+
+        });
+
+        // 刷新
+        $('#btn-refresh').on('click', function () {
+            tableIns.reload();
+        });
+
+        // 分配
+        $('#btn-delivery').on('click', function () {
+            if(delivery.length<1) {
+                layer.open({
+                    title: '提示'
+                    ,content: '请先选择订单'
+                });
+                return;
+            }
+            layer.open({
+                title: '选择配送员',
+                type: 2,
+                area: ['500px', '300px'],
+                btn: ['选择', '取消'], //可以无限个按钮
+                content: 'delivery.html', //这里content是一个URL，如果你不想让iframe出现滚动条，你还可以content: ['http://sentsin.com', 'no']
+                btn1 : function(index, layero){
+                    var body = layer.getChildFrame('body', index);
+                    staffName = body.find('#staffName').val();
+                    console.log(staffName);
+                    layer.close(index); //如果设定了yes回调，需进行手工关闭
+                    layer.msg("分配成功", {
+                        icon: 1, time: 1000, end: function () {
+                            window.location.reload();
+                        }
+                    });
+
+                    $.ajax({
+                        url:'/order/delivery',
+                        type:"post",
+                        dateType:'json',
+                        data:{
+                            delivery:delivery,
+                            staffName:staffName
+                        },
+                        success:function(res){
+                            var objs=eval(res); //解析json对象
+                            //console.log("数据=="+JSON.stringify(objs));
+                            console.log("数据=="+objs);
+
+
+                        },
+                        error:function(err){
+                            console.log(err)
+                        }
+                    });
+
+                    return true;
+                },
+            });
+        });
+
+
+        // you code ...
+
+
+        //监听工具条
+        table.on('tool(test)', function(obj){ //注：tool是工具条事件名，test是table原始容器的属性 lay-filter="对应的值"
+            var data = obj.data; //获得当前行数据
+            var layEvent = obj.event; //获得 lay-event 对应的值（也可以是表头的 event 参数对应的值）
+            var tr = obj.tr; //获得当前行 tr 的DOM对象
+
+            console.log(data);
+
+            if(layEvent === 'detail'){
+
+            } else if(layEvent === 'del'){ //是否立项
+
+                layer.confirm('是否删除？', {
+                    btn: ['删除', '取消'] //可以无限个按钮
+
+                }, function(index, layero){
+                    //按钮【按钮一】的回调
+                    $.ajax({
+                        method: 'POST',
+                        url: '/admin_platform/makeProject',
+                        data: data,
+                        error: function () {
+                            console.log('ajax error');
+                        },
+                        success: function (res) {
+                            console.log(res);
+                            var msg = res['msg'];
+                            if(msg === 'success'){
+                                layer.open({
+                                    title: '提示'
+                                    ,content: '立项成功！'
+                                });
+                            }
+                        }
+                    });
+                }, function(index){
+                    //按钮【按钮二】的回调
+
+                });
+
+
+            }
+        });
+
+    });
+</script>
+<!-- 表格操作按钮集 -->
+<script type="text/html" id="barOption">
+    <a class="layui-btn layui-btn-mini layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-mini layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<script>
+    function deliv() {
+        var n = $('#n').val();
+        console.log(n);
+        if(n===''){
+            layer.open({
+                title: '提示'
+                ,content: '请输入桶数！'
+            });
+            return;
+        }
+        var url = 'delivery-list.html?n='+n;
+        window.location.href = url;
+
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>生成结果</title>
+    <link rel="stylesheet" href="../frame/layui/css/layui.css">
+    <link rel="stylesheet" href="../frame/static/css/style.css">
+</head>
+<body>
+
+<script>
+    localStorage.host = 'localhost:8090';
+</script>
+
+
+<!-- 工具集 -->
+<div class="my-btn-box" style="margin-top: 17px">
+    <span class="fl">
+        <a class="layui-btn layui-btn-danger radius btn-delect" id="btn-delete-all">批量删除</a>
+        <a class="layui-btn btn-add btn-default" id="btn-delivery">分配订单</a>
+        <a class="layui-btn btn-add btn-default" id="btn-refresh"><i class="layui-icon">&#xe666;</i></a>
+    </span>
+</div>
+
+
+<!-- 表格 -->
+<div id="dateTable" lay-filter="test"></div>
+
+<script type="text/javascript" src="../frame/layui/layui.js"></script>
+<script type="text/javascript" src="../js/index.js"></script>
+<script type="text/javascript" src="../js/jquery.min.js"></script>
+
+<script>
+    function GetRequest() {
+        var url = location.search; //获取url中"?"符后的字串
+        var theRequest = new Object();
+        if (url.indexOf("?") != -1) {
+            var str = url.substr(1);
+            strs = str.split("&");
+            for (var i = 0; i < strs.length; i++) {
+                theRequest[strs[i].split("=")[0]] = decodeURIComponent(strs[i].split("=")[1]);
+            }
+        }
+        return theRequest;
+    }
+</script>
+
+<script type="text/javascript">
+
+    Array.prototype.indexOf = function(val) {
+        for (var i = 0; i < this.length; i++) {
+            if (this[i] == val) return i;
+        }
+        return -1;
+    };
+
+    Array.prototype.remove = function(val) {
+        var index = this.indexOf(val);
+        if (index > -1) {
+            this.splice(index, 1);
+        }
+    };
+
+    // layui方法
+    layui.use(['table', 'form', 'layer', 'vip_table'], function () {
+
+        // 操作对象
+        var form = layui.form
+            , table = layui.table
+            , layer = layui.layer
+            , vipTable = layui.vip_table
+            , $ = layui.jquery;
+
+        var delivery = [];
+        var staffName = '';
+
+        // 表格渲染
+        var tableIns = table.render({
+            elem: '#dateTable'                  //指定原始表格元素选择器（推荐id选择器）
+            , height: vipTable.getFullHeight()    //容器高度
+            , cols: [[                  //标题栏
+                 {field: 'id', title: 'ID', sort: true}
+                , {field: 'nickname', title: '用户名'}
+                , {field: 'area', title: '生活区'}
+                , {field: 'build', title: '楼号', sort: true}
+                , {field: 'dormitory', title: '寝室号'}
+                , {field: 'bookTime', title: '下单时间'}
+                , {field: 'arriveTime', title: '送达时间', sort: true}
+                , {field: 'staffName', title: '送水员', sort: true}
+                , {field: 'state', title: '状态', sort: true}
+            ]]
+            , id: 'dataCheck'
+            ,where:{'n':GetRequest()['n']}
+            , url: '/delivery/list'
+            , method: 'get'
+            , page: true
+            , limits: [30, 60, 90, 150, 300]
+            , limit: 30 //默认采用30
+            , loading: false
+            , done: function (res, curr, count) {
+                //如果是异步请求数据方式，res即为你接口返回的信息。
+                //如果是直接赋值的方式，res即为：{data: [], count: 99} data为当前页数据、count为数据总长度
+                console.log(res);
+                var data = res.data;
+                for(var i=0; i<data.length; i++) {
+                    delivery[i] = data[i].id;
+                }
+                console.log(delivery);
+            }
+        });
+
+
+
+        // 刷新
+        $('#btn-refresh').on('click', function () {
+            tableIns.reload();
+        });
+
+        // 分配
+        $('#btn-delivery').on('click', function () {
+            if(delivery.length<1) {
+                layer.open({
+                    title: '提示'
+                    ,content: '请先选择订单'
+                });
+                return;
+            }
+            layer.open({
+                title: '选择配送员',
+                type: 2,
+                area: ['500px', '300px'],
+                btn: ['选择', '取消'], //可以无限个按钮
+                content: 'delivery.html', //这里content是一个URL，如果你不想让iframe出现滚动条，你还可以content: ['http://sentsin.com', 'no']
+                btn1 : function(index, layero){
+                    var body = layer.getChildFrame('body', index);
+                    staffName = body.find('#staffName').val();
+                    console.log(staffName);
+                    layer.close(index); //如果设定了yes回调，需进行手工关闭
+                    layer.msg("分配成功", {
+                        icon: 1, time: 1000, end: function () {
+                            window.location.reload();
+                        }
+                    });
+
+                    $.ajax({
+                        url:'/order/delivery',
+                        type:"post",
+                        dateType:'json',
+                        data:{
+                            delivery:delivery,
+                            staffName:staffName
+                        },
+                        success:function(res){
+                            var objs=eval(res); //解析json对象
+                            //console.log("数据=="+JSON.stringify(objs));
+                            console.log("数据=="+objs);
+
+
+                        },
+                        error:function(err){
+                            console.log(err)
+                        }
+                    });
+
+                    return true;
+                },
+            });
+        });
+
+
+        // you code ...
+
+
+    });
+</script>
+
+
+</body>
+</html>

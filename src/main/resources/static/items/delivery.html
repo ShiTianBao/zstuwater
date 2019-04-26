@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>新增菜单</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="../frame/layui/css/layui.css">
+    <link rel="stylesheet" href="../frame/static/css/style.css">
+    <link rel="icon" href="../frame/static/image/logo.png">
+</head>
+
+<body>
+
+
+<div class="layui-container" style="margin-top: 70px;">
+    <form class="layui-form">
+        <div class="layui-form-item layui-col-md-offset2">
+            <label class="layui-form-label">配送员工:</label>
+            <div class="layui-input-inline">
+                <select name="staffName" id="staffName" lay-verify="required">
+                    <option value=""></option>
+                </select>
+            </div>
+        </div>
+    </form>
+</div>
+<script src="../frame/layui/layui.js"></script>
+<script src="../js/jquery.min.js"></script>
+<script type="text/javascript">
+    if (window.location.href.indexOf('8090') === -1) {
+        localStorage.host = 'http://localhost:8090';
+    } else {
+        localStorage.host = '';
+    }
+</script>
+
+<script>
+
+</script>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+
+        layui.use(['form', 'layedit', 'laydate'], function(){
+            var form = layui.form
+                ,layer = layui.layer
+                ,layedit = layui.layedit
+                ,laydate = layui.laydate;
+
+            $.ajax(localStorage.host + '/staff/delivery', {
+                method: "GET",
+                success: function (res) {
+                    console.log(res);
+                    var data = res['data'];
+                    for (var i = 0, len = data.length; i < len; i++) {
+                        var item = data[i];
+                        console.log("<option value='" + item.name + "'>" + item.name + "</option>");
+                        $('#staffName').append("<option value='" + item.name + "'>" + item.name + "</option>");
+                    }
+                    form.render('select');
+                },
+                fail: function () {
+                    console.log("GG");
+                }
+            });
+
+        });
+
+    });
+
+
+
+</script>
+</body>
+</html>

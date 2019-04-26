@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>寝室楼地图</title>
+</head>
+<style>
+    html,body{height:100%; width:100%; overflow:hidden; margin:0;
+        padding:0;}
+</style>
+<body>
+<!--百度地图容器-->
+<div style="width:100%;height:100%;border:#ccc solid 1px;" id="dituContent"></div>
+<script src="http://libs.baidu.com/jquery/1.9.0/jquery.js"></script>
+<script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=mfAp43N9T5GFX1CSw4GfCFCFnORCL4kF"></script>
+<script type="text/javascript">
+
+    function uniq(array){
+        var temp = []; //一个新的临时数组
+        for(var i = 0; i < array.length; i++){
+            if(temp.indexOf(array[i]) == -1){
+                temp.push(array[i]);
+            }
+        }
+        return temp;
+    }
+
+
+    $.ajax({
+        type: 'get',
+        url: '/address/list',
+        error: function(data) {
+            console.log('error');
+            console.log(data)
+        },
+        success: function(data){
+            console.log(data);
+            var jsonArray = data['data'];
+            var point = [];
+            for(var i=0; i<jsonArray.length; i++) {
+                point[i] = [jsonArray[i]['longitude'],jsonArray[i]['latitude'],jsonArray[i]['name']];
+            }
+            console.log(point);
+            point = uniq(point);
+
+            var map = new BMap.Map("dituContent");//创建和初始化地图函数：
+            map.centerAndZoom(new BMap.Point(120.367642,30.322975), 18);//中心点坐标主要必须要有中心点
+            map.enableScrollWheelZoom(true);//是否有滚轮滑动放大缩小
+            for (var i = 0; i < point.length; i++) {
+                var marker = new BMap.Marker(new BMap.Point(point[i][0],point[i][1]));//标创建注点
+                //Point(x,y)是封装好的一个方法，用来把坐标转换一下，以后如果用到有关坐标的功能都要用到这个方法；x是经度，y是维度
+                map.addOverlay(marker);//在地图的指定坐标添加覆盖物 也就是标注点
+                marker.setLabel(new BMap.Label(point[i][2],{offset:new BMap.Size(15,-25)}));
+            }
+        }
+    });
+
+</script>
+
+</body>
+</html>
